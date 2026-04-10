@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — Control Panel</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div id="toast-container"></div>
+
+<!-- MODAL: All Users -->
+<div id="modal-all-users" class="modal-overlay">
+  <div class="modal md">
+    <div class="modal-header">
+      <div class="modal-title">👥 All Registered Users</div>
+      <button class="modal-close" onclick="closeModal('modal-all-users')">✕</button>
+    </div>
+    <div id="modal-all-users-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: Admins -->
+<div id="modal-admins" class="modal-overlay">
+  <div class="modal md">
+    <div class="modal-header">
+      <div class="modal-title">🔑 Admin Accounts</div>
+      <button class="modal-close" onclick="closeModal('modal-admins')">✕</button>
+    </div>
+    <div id="modal-admins-body"></div>
+  </div>
+</div>
+
+<!-- MODAL: Edit User -->
+<div id="modal-edit-user" class="modal-overlay">
+  <div class="modal md">
+    <div class="modal-header">
+      <div class="modal-title">✏️ Edit User</div>
+      <button class="modal-close" onclick="closeModal('modal-edit-user')">✕</button>
+    </div>
+    <input type="hidden" id="edit-user-original-userid">
+    <div id="edit-user-error" class="error-msg"></div>
+
+    <!-- Profile Image Upload -->
+    <div class="profile-upload-wrap">
+      <div class="profile-preview" id="edit-profile-preview">?</div>
+      <div style="flex:1">
+        <div style="font-size:.78rem;font-weight:700;margin-bottom:.35rem">Profile Image</div>
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3);margin-bottom:.5rem">JPG / PNG / WebP · max 5 MB</div>
+        <label style="cursor:pointer">
+          <span class="btn btn-secondary btn-sm" style="width:auto;font-size:.72rem">Choose File</span>
+          <input type="file" id="edit-u-img" accept="image/*" style="display:none" onchange="previewEditImage(this)">
+        </label>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="field"><label>User ID <span style="color:var(--text3);font-size:.63rem">(login key)</span></label><input type="text" id="edit-u-userid"></div>
+      <div class="field"><label>Email</label><input type="email" id="edit-u-email"></div>
+    </div>
+    <div class="field"><label>Mobile Number <span style="color:var(--text3);font-size:.63rem">(10 digits)</span></label><input type="tel" id="edit-u-mobile" maxlength="10"></div>
+    <div class="form-row">
+      <div class="field"><label>New Password <span style="color:var(--text3);font-size:.63rem">(blank = keep)</span></label><input type="password" id="edit-u-pw" placeholder="••••••••" maxlength="8"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="edit-u-cpw" placeholder="••••••••" maxlength="8"></div>
+    </div>
+    <div class="edit-danger-zone">
+      <div class="edit-danger-title">⚠ Danger Zone</div>
+      <button class="btn-danger-sm" onclick="deleteUser()">🗑 Delete This User Permanently</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-edit-user')" style="width:auto">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="edit-save-btn" onclick="saveEditUser()" style="width:auto">✓ Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<section id="s-login" class="section auth-wrap active">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="logo-mark"> <img src="Metaverse911.png" alt="logo"></div><span>Admin Dashboard</span></div>
+    <div class="auth-title">Sign In</div>
+    <div class="auth-subtitle"></div>
+    <div id="login-error" class="error-msg"></div>
+    <div class="field"><label>Admin ID</label><input type="text" id="login-id" placeholder="admin" autocomplete="username"></div>
+    <div class="field"><label>Password</label><input type="password" id="login-pw" placeholder="••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" id="login-btn" onclick="login()">Sign In →</button>
+    <div class="auth-links">
+      <button class="btn btn-ghost" onclick="showSection('s-create-admin')">+ Create Admin</button>
+      <button class="btn btn-ghost" onclick="showSection('s-change-pw')">Change Password</button>
+    </div>
+  </div>
+</section>
+
+<!-- CREATE ADMIN -->
+<section id="s-create-admin" class="section auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="logo-mark">  
+       <img src="Metaverse911.png" alt="logo"></div><span>Admin Dashboard</span></div>
+    <div class="auth-title">Create Admin</div>
+    <div class="auth-subtitle">// verify identity first</div>
+    <div class="step-indicator">
+      <div class="step active" id="ca-step1-bar"></div>
+      <div class="step" id="ca-step2-bar"></div>
+    </div>
+    <div id="ca-step1">
+      <div id="ca-verify-error" class="error-msg">⚠ Verification failed.</div>
+      <div class="field"><label>Existing Admin ID</label><input type="text" id="ca-vid" placeholder="admin"></div>
+      <div class="field"><label>Password</label><input type="password" id="ca-vpw" placeholder="••••••"></div>
+      <button class="btn btn-primary" id="ca-verify-btn" onclick="verifyAdminForCreate()">Verify →</button>
+    </div>
+    <div id="ca-step2" style="display:none">
+      <div id="ca-create-error" class="error-msg"></div>
+      <div class="field"><label>New Admin ID</label><input type="text" id="ca-nid" placeholder="newadmin"></div>
+      <div class="field"><label>New Password</label><input type="password" id="ca-npw" placeholder="••••••"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="ca-cpw" placeholder="••••••"></div>
+      <button class="btn btn-primary" id="ca-create-btn" onclick="createAdmin()">Create Admin →</button>
+    </div>
+    <div class="auth-links"><button class="btn btn-ghost" onclick="showSection('s-login')">← Back to Login</button></div>
+  </div>
+</section>
+
+<!-- CHANGE PASSWORD -->
+<section id="s-change-pw" class="section auth-wrap">
+  <div class="auth-card">
+    <div class="auth-logo"><div class="logo-mark"><img src="Metaverse911.png" alt="logo"></div><span>AdminOS</span></div>
+    <div class="auth-title">Change Password</div>
+    <div class="auth-subtitle">// update admin credentials</div>
+    <div id="cp-error" class="error-msg"></div>
+    <div id="cp-success" class="success-msg">✓ Password updated successfully.</div>
+    <div class="field"><label>Admin ID</label><input type="text" id="cp-id" placeholder="admin"></div>
+    <div class="field"><label>Old Password</label><input type="password" id="cp-old" placeholder="••••••"></div>
+    <div class="field"><label>New Password</label><input type="password" id="cp-new" placeholder="••••••"></div>
+    <div class="field"><label>Confirm New Password</label><input type="password" id="cp-confirm" placeholder="••••••"></div>
+    <button class="btn btn-primary" id="cp-btn" onclick="changePassword()">Update Password →</button>
+    <div class="auth-links"><button class="btn btn-ghost" onclick="showSection('s-login')">← Back to Login</button></div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="s-dashboard" class="section dashboard-wrap">
+  <div class="topbar">
+    <div class="topbar-logo"><div class="logo-mark"><img src="Metaverse911.png" alt="logo"></div><span>Admin Dashboard</span></div>
+    <div class="topbar-center"><div class="welcome-pill">Signed in as <span id="welcome-name">—</span></div></div>
+    <div class="topbar-right">
+      <button class="btn btn-secondary btn-sm" onclick="syncServer()" style="font-size:.75rem;padding:.38rem .9rem">⟳ Sync</button>
+      <button class="btn-danger-sm" onclick="logout()">Logout</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="stats-row">
+      <div class="stat-card" onclick="openAllUsersModal()">
+        <div class="stat-icon purple">👥</div>
+        <div><div class="stat-num" id="stat-users">—</div><div class="stat-label">Total Users</div></div>
+      </div>
+      <div class="stat-card" onclick="openAdminsModal()">
+        <div class="stat-icon yellow">🔑</div>
+        <div><div class="stat-num" id="stat-admins">—</div><div class="stat-label">Admins</div></div>
+      </div>
+      <div class="stat-card" onclick="openAllImagesPanel()">
+        <div class="stat-icon green">📷</div>
+        <div><div class="stat-num" id="stat-images">—</div><div class="stat-label">Total Images</div></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn btn-primary btn-sm" onclick="showSection('s-add-user')" style="width:auto">+ Add User</button>
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" class="search-input" placeholder="Search user ID, email or mobile…" id="search-input" oninput="searchUsers()">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header-row">
+        <h2>User Registry</h2>
+        <span class="table-count" id="table-count">—</span>
+      </div>
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">📭</div>
+        <h3>No users yet</h3>
+        <p>Click "+ Add User" to register users from this dashboard.</p>
+      </div>
+      <table id="user-table" style="display:none">
+        <thead>
+          <tr><th>#</th><th>User</th><th>Email</th><th>Images / Cards</th><th>Last Sync</th><th>Actions</th></tr>
+        </thead>
+        <tbody id="user-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ADD USER -->
+<section id="s-add-user" class="section page-wrap">
+  <div class="topbar">
+    <div class="topbar-logo"><div class="logo-mark"><img src="Metaverse911.png" alt="logo"></div><span>AdminOS</span></div>
+    <div class="topbar-center"></div>
+    <div class="topbar-right"><button class="btn btn-ghost" onclick="showDashboard()">← Dashboard</button></div>
+  </div>
+  <div class="page-content">
+    <div class="page-back" onclick="showDashboard()">← Back to Dashboard</div>
+    <div class="page-title">Add New User</div>
+    <div class="page-subtitle">// user authenticates with User ID + Password in the Unity app</div>
+    <div class="form-card">
+      <div id="add-user-error" class="error-msg"></div>
+      <div class="form-row">
+        <div class="field">
+          <label>User ID <span style="color:var(--text3);font-size:.63rem">(used for login)</span></label>
+          <input type="text" id="u-userid" placeholder="ankit01">
+        </div>
+        <div class="field"><label>Email</label><input type="email" id="u-email" placeholder="ankit@example.com"></div>
+      </div>
+      <div class="field">
+        <label>Mobile Number <span style="color:var(--text3);font-size:.63rem">(exactly 10 digits)</span></label>
+        <input type="tel" id="u-mobile" placeholder="9876543210" maxlength="10">
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label>Password <span style="color:var(--text3);font-size:.63rem">(exactly 8 characters)</span></label>
+          <input type="password" id="u-pw" placeholder="••••••••" maxlength="8">
+        </div>
+        <div class="field"><label>Confirm Password</label><input type="password" id="u-cpw" placeholder="••••••••" maxlength="8"></div>
+      </div>
+      <button class="btn btn-primary" id="create-user-btn" onclick="createUser()">Create User →</button>
+    </div>
+  </div>
+</section>
+
+<!-- USER DETAIL -->
+<section id="s-user-detail" class="section page-wrap">
+  <div class="topbar">
+    <div class="topbar-logo"><div class="logo-mark"><img src="Metaverse911.png" alt="logo"></div><span>AdminOS</span></div>
+    <div class="topbar-center"></div>
+    <div class="topbar-right"><button class="btn btn-ghost" onclick="showDashboard()">← Dashboard</button></div>
+  </div>
+  <div class="page-content wide">
+    <div class="page-back" onclick="showDashboard()">← Back to Dashboard</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem;flex-wrap:wrap;gap:.5rem">
+      <div class="page-title" style="margin-bottom:0">User Detail</div>
+      <div style="display:flex;gap:.6rem">
+        <button class="btn btn-secondary btn-sm" id="detail-edit-btn" style="width:auto">✏ Edit User</button>
+        <button class="btn btn-secondary btn-sm" id="detail-img-btn" style="width:auto">👁 View Images</button>
+      </div>
+    </div>
+    <div class="page-subtitle">// live from server · single source of truth</div>
+    <div class="detail-header">
+      <div class="detail-avatar" id="detail-avatar">?</div>
+      <div>
+        <div class="detail-name" id="detail-name">—</div>
+        <div class="detail-email" id="detail-email-sub">—</div>
+      </div>
+    </div>
+    <div class="detail-grid" id="detail-grid"></div>
+    <div class="section-label">SYNCED CARDS</div>
+    <div id="detail-cards" style="margin-bottom:1.5rem;font-family:var(--mono);font-size:.8rem;color:var(--text2)">Loading…</div>
+    <div class="section-label">RAW PROFILE — data/users/&lt;userId&gt;.json</div>
+    <div class="json-block" id="detail-json"></div>
+  </div>
+</section>
+
+<!-- IMAGE PANEL -->
+<div class="img-panel-overlay" id="img-panel-overlay">
+  <div class="img-panel">
+    <div class="img-panel-head">
+      <div>
+        <div class="img-panel-title" id="img-panel-uname">User</div>
+        <div class="img-panel-sub" id="img-panel-usub">—</div>
+      </div>
+      <button class="img-panel-close" onclick="closeImagePanel()">✕</button>
+    </div>
+    <div class="img-panel-body">
+      <div class="img-grid" id="img-panel-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- LIGHTBOX -->
+<div class="lightbox" id="lightbox">
+  <span class="lightbox-close" onclick="closeLightbox()">✕</span>
+  <img id="lightbox-img" src="" alt="preview">
+</div>
+
+<script>
+// ═════════════════════════════════════════════════════════════════════════════
+//  CONFIG  — auto-detect server from page origin
+// ═════════════════════════════════════════════════════════════════════════════
+const SERVER = window.SERVER_URL || window.location.origin;
+
+let SESSION_TOKEN = null;
+let currentAdmin  = null;
+let _allUsers     = [];
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  INIT
+// ═════════════════════════════════════════════════════════════════════════════
+async function initApp(){
+  const cached = sessionStorage.getItem('ADMIN_TOKEN');
+  if(cached){
+    SESSION_TOKEN = cached;
+    currentAdmin  = sessionStorage.getItem('ADMIN_ID') || '—';
+    await showDashboard();
+  } else {
+    showSection('s-login');
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  API HELPER
+// ═════════════════════════════════════════════════════════════════════════════
+async function api(method, path, body){
+  const opts = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(SESSION_TOKEN ? { 'x-admin-token': SESSION_TOKEN } : {})
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(SERVER + path, opts);
+  if(r.status === 401){
+    SESSION_TOKEN = null; currentAdmin = null;
+    sessionStorage.removeItem('ADMIN_TOKEN'); sessionStorage.removeItem('ADMIN_ID');
+    toast('Session expired — please sign in again','error');
+    showSection('s-login');
+    throw new Error('Unauthorized');
+  }
+  return r.json();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  AUTH
+// ═════════════════════════════════════════════════════════════════════════════
+async function login(){
+  const id = document.getElementById('login-id').value.trim();
+  const pw = document.getElementById('login-pw').value.trim();
+  const errEl = document.getElementById('login-error');
+  const btn   = document.getElementById('login-btn');
+  errEl.classList.remove('visible');
+  errEl.textContent = '';
+  if(!id||!pw){ errEl.textContent = '⚠ Enter both admin ID and password.'; errEl.classList.add('visible'); return; }
+  btn.disabled=true; btn.textContent='Signing in…';
+  try{
+    const res = await fetch(`${SERVER}/api/admin/login`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({id, password: pw})
+    });
+    const j = await res.json();
+    if(j.ok && j.token){
+      SESSION_TOKEN = j.token; currentAdmin = id;
+      sessionStorage.setItem('ADMIN_TOKEN', j.token);
+      sessionStorage.setItem('ADMIN_ID',    id);
+      toast(`Signed in as ${id}`);
+      await showDashboard();
+    } else {
+      errEl.textContent = '⚠ Invalid admin ID or password.';
+      errEl.classList.add('visible');
+    }
+  } catch(e){
+    errEl.textContent = '⚠ Invalid admin ID or password.';
+    errEl.classList.add('visible');
+  }
+  btn.disabled=false; btn.textContent='Sign In →';
+}
+
+async function logout(){
+  try{ await api('POST','/api/admin/logout'); } catch{}
+  SESSION_TOKEN = null; currentAdmin = null;
+  sessionStorage.removeItem('ADMIN_TOKEN'); sessionStorage.removeItem('ADMIN_ID');
+  document.getElementById('login-id').value='';
+  document.getElementById('login-pw').value='';
+  document.getElementById('login-error').classList.remove('visible');
+  toast('Logged out','info');
+  showSection('s-login');
+}
+
+async function verifyAdminForCreate(){
+  const id = document.getElementById('ca-vid').value.trim();
+  const pw = document.getElementById('ca-vpw').value.trim();
+  const errEl = document.getElementById('ca-verify-error');
+  const btn   = document.getElementById('ca-verify-btn');
+  btn.disabled=true; btn.textContent='Verifying…';
+  try{
+    const res = await fetch(`${SERVER}/api/admin/login`,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, password: pw}) });
+    const j = await res.json();
+    if(j.ok){
+      errEl.classList.remove('visible');
+      document.getElementById('ca-step1').style.display='none';
+      document.getElementById('ca-step2').style.display='block';
+      document.getElementById('ca-step2-bar').classList.add('active');
+      window._createAdminTempToken = j.token;
+    } else { errEl.classList.add('visible'); }
+  } catch(e){ errEl.classList.add('visible'); }
+  btn.disabled=false; btn.textContent='Verify →';
+}
+
+async function createAdmin(){
+  const nid=document.getElementById('ca-nid').value.trim();
+  const npw=document.getElementById('ca-npw').value.trim();
+  const cpw=document.getElementById('ca-cpw').value.trim();
+  const errEl=document.getElementById('ca-create-error');
+  const btn=document.getElementById('ca-create-btn');
+  if(!nid||!npw||!cpw){ errEl.textContent='⚠ All fields required.'; errEl.classList.add('visible'); return; }
+  if(npw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
+  btn.disabled=true; btn.textContent='Creating…';
+  try{
+    const res = await fetch(`${SERVER}/api/admin/admins`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-admin-token':window._createAdminTempToken||SESSION_TOKEN},
+      body: JSON.stringify({newId: nid, newPassword: npw})
+    });
+    const j = await res.json();
+    if(j.ok){
+      toast(`Admin "${nid}" created!`);
+      ['ca-vid','ca-vpw','ca-nid','ca-npw','ca-cpw'].forEach(i=>document.getElementById(i).value='');
+      document.getElementById('ca-step1').style.display='block';
+      document.getElementById('ca-step2').style.display='none';
+      document.getElementById('ca-step2-bar').classList.remove('active');
+      window._createAdminTempToken=null;
+      showSection('s-login');
+    } else { errEl.textContent='⚠ '+j.error; errEl.classList.add('visible'); }
+  } catch(e){ errEl.textContent='⚠ Server error'; errEl.classList.add('visible'); }
+  btn.disabled=false; btn.textContent='Create Admin →';
+}
+
+async function changePassword(){
+  const id=document.getElementById('cp-id').value.trim();
+  const oldPw=document.getElementById('cp-old').value.trim();
+  const newPw=document.getElementById('cp-new').value.trim();
+  const conf=document.getElementById('cp-confirm').value.trim();
+  const errEl=document.getElementById('cp-error');
+  const okEl=document.getElementById('cp-success');
+  const btn=document.getElementById('cp-btn');
+  okEl.classList.remove('visible');
+  if(!id||!oldPw||!newPw||!conf){ errEl.textContent='⚠ All fields required.'; errEl.classList.add('visible'); return; }
+  if(newPw!==conf){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
+  btn.disabled=true; btn.textContent='Updating…';
+  try{
+    const loginRes = await fetch(`${SERVER}/api/admin/login`,{ method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id, password: oldPw}) });
+    const loginData = await loginRes.json();
+    if(!loginData.ok){ errEl.textContent='⚠ Wrong old password.'; errEl.classList.add('visible'); btn.disabled=false; btn.textContent='Update Password →'; return; }
+    const j = await fetch(`${SERVER}/api/admin/admins/${encodeURIComponent(id)}/password`,{
+      method:'PUT', headers:{'Content-Type':'application/json','x-admin-token': loginData.token},
+      body: JSON.stringify({oldPassword: oldPw, newPassword: newPw})
+    }).then(r=>r.json());
+    if(j.ok){
+      errEl.classList.remove('visible'); okEl.classList.add('visible');
+      ['cp-id','cp-old','cp-new','cp-confirm'].forEach(i=>document.getElementById(i).value='');
+      toast('Password updated!');
+      setTimeout(()=>showSection('s-login'),1200);
+    } else { errEl.textContent='⚠ '+(j.error||'Server error'); errEl.classList.add('visible'); }
+  } catch(e){ errEl.textContent='⚠ Server error'; errEl.classList.add('visible'); }
+  btn.disabled=false; btn.textContent='Update Password →';
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  DASHBOARD
+// ═════════════════════════════════════════════════════════════════════════════
+async function showDashboard(){
+  document.getElementById('welcome-name').textContent = currentAdmin;
+  document.getElementById('search-input').value = '';
+  showSection('s-dashboard');
+  await refreshDashboard();
+}
+
+async function refreshDashboard(){
+  document.getElementById('user-tbody').innerHTML='';
+  document.getElementById('user-table').style.display='none';
+  document.getElementById('empty-state').classList.remove('visible');
+  document.getElementById('table-count').textContent='Loading…';
+  try{
+    const [users, admins] = await Promise.all([api('GET','/api/users'), api('GET','/api/admins')]);
+    _allUsers = users;
+    document.getElementById('stat-admins').textContent = admins.length;
+    renderTable(document.getElementById('search-input').value);
+  } catch(e){ if(e.message!=='Unauthorized') toast('Cannot reach server — is it running?','error'); }
+}
+
+function renderTable(search=''){
+  let users = _allUsers;
+  if(search){
+    const q=search.toLowerCase();
+    users=users.filter(u=>(u.userId||u.username||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.mobile||'').toLowerCase().includes(q));
+  }
+  document.getElementById('stat-users').textContent  = _allUsers.length;
+  document.getElementById('stat-images').textContent = _allUsers.reduce((s,u)=>s+(u.totalImages||0),0);
+  const tbody=document.getElementById('user-tbody');
+  const table=document.getElementById('user-table');
+  const empty=document.getElementById('empty-state');
+  const count=document.getElementById('table-count');
+  count.textContent=`${users.length} user${users.length!==1?'s':''}`;
+  if(!users.length){ table.style.display='none'; empty.classList.add('visible'); return; }
+  empty.classList.remove('visible'); table.style.display='table'; tbody.innerHTML='';
+  users.forEach((user,i)=>{
+    const dt=user.updatedAt?new Date(user.updatedAt):null;
+    const dateStr=dt?dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    const timeStr=dt?dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):'';
+    const uid = user.userId || user.username || '?';
+    const initials = uid.slice(0,2).toUpperCase();
+    // ✅ FIX: show profile image if available
+    const avatarContent = user.profileImage
+      ? `<img src="${escAttr(SERVER + user.profileImage)}" alt="${escAttr(uid)}" onerror="this.style.display='none';this.parentNode.textContent='${escAttr(initials)}';">`
+      : escHtml(initials);
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><span class="td-serial">${String(i+1).padStart(2,'0')}</span></td>
+      <td><div class="user-cell">
+        <div class="avatar">${avatarContent}</div>
+        <div>
+          <div class="user-name">${escHtml(uid)}</div>
+          <div class="user-email-sub">${escHtml(user.mobile||'')}</div>
+        </div>
+      </div></td>
+      <td><span class="td-email">${escHtml(user.email||'')}</span></td>
+      <td><span class="td-stats">📷 ${user.totalImages||0} &nbsp; 🪪 ${user.totalCards||0}</span></td>
+      <td><div class="td-date"><span class="date-main">${dateStr}</span><span class="date-time">${timeStr}</span></div></td>
+      <td><div class="actions-cell">
+        <button class="btn-view"  onclick="event.stopPropagation();openImagePanel('${escAttr(uid)}')">👁 Images</button>
+        <button class="btn-dl"    onclick="event.stopPropagation();downloadUserData('${escAttr(uid)}')">↓ ZIP</button>
+        <button class="btn-edit"  onclick="event.stopPropagation();openEditUser('${escAttr(uid)}')">✏ Edit</button>
+        <div class="dots-wrap" onclick="event.stopPropagation()">
+          <button class="btn-dots" onclick="toggleRowMenu(this,'${escAttr(uid)}')" title="More options">⋮</button>
+          <div class="row-dropdown" id="menu-${escAttr(uid)}">
+            <button class="dropdown-item" onclick="event.stopPropagation();exportUserJSON('${escAttr(uid)}')">
+              <span class="di-icon">{ }</span> Download as JSON
+            </button>
+            <button class="dropdown-item" onclick="event.stopPropagation();exportUserXLSX('${escAttr(uid)}')">
+              <span class="di-icon">⊞</span> Download as Excel (.xlsx)
+            </button>
+          </div>
+        </div>
+      </div></td>`;
+    tr.addEventListener('click',()=>openUserDetails(uid));
+    tbody.appendChild(tr);
+  });
+}
+
+function searchUsers(){ renderTable(document.getElementById('search-input').value); }
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  STAT MODALS
+// ═════════════════════════════════════════════════════════════════════════════
+function openAllUsersModal(){
+  const html=_allUsers.length
+    ? _allUsers.map(u=>{
+        const uid=u.userId||u.username||'?';
+        const init=uid.slice(0,2).toUpperCase();
+        const dt=u.createdAt?new Date(u.createdAt).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}):'—';
+        const avatarContent = u.profileImage
+          ? `<img src="${escAttr(SERVER+u.profileImage)}" alt="${escAttr(uid)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`
+          : escHtml(init);
+        return `<div class="user-list-item" onclick="closeModal('modal-all-users');openUserDetails('${escAttr(uid)}')">
+          <div class="avatar" style="width:36px;height:36px">${avatarContent}</div>
+          <div style="flex:1"><div style="font-weight:700;font-size:.87rem">${escHtml(uid)}</div>
+          <div style="font-family:var(--mono);font-size:.72rem;color:var(--text2)">${escHtml(u.email||'')}</div></div>
+          <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3)">${dt}</div>
+        </div>`;
+      }).join('')
+    : '<p style="text-align:center;color:var(--text2);font-family:var(--mono);font-size:.82rem;padding:2.5rem">No users.</p>';
+  document.getElementById('modal-all-users-body').innerHTML=html;
+  openModal('modal-all-users');
+}
+
+async function openAdminsModal(){
+  try{
+    const admins = await api('GET','/api/admins');
+    const html=admins.map((a,i)=>`
+      <div class="admin-list-item">
+        <div class="admin-badge">${a.id[0].toUpperCase()}</div>
+        <div style="flex:1"><div style="font-weight:700;font-size:.88rem">${escHtml(a.id)}</div>
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--text3)">Administrator${i===0?' · Super Admin':''}</div></div>
+        <div style="font-family:var(--mono);font-size:.72rem;color:var(--text3)">🔑 ••••••</div>
+      </div>`).join('');
+    document.getElementById('modal-admins-body').innerHTML=html||'<p style="text-align:center;padding:2rem;color:var(--text2)">No admins.</p>';
+    openModal('modal-admins');
+  } catch(e){ if(e.message!=='Unauthorized') toast('Failed to load admins','error'); }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  ADD USER  (uses userId as primary key)
+// ═════════════════════════════════════════════════════════════════════════════
+async function createUser(){
+  const userId = document.getElementById('u-userid').value.trim();
+  const email  = document.getElementById('u-email').value.trim();
+  const mobile = document.getElementById('u-mobile').value.trim();
+  const pw     = document.getElementById('u-pw').value.trim();
+  const cpw    = document.getElementById('u-cpw').value.trim();
+  const errEl  = document.getElementById('add-user-error');
+  const btn    = document.getElementById('create-user-btn');
+  errEl.classList.remove('visible');
+  if(!userId||!email||!mobile||!pw||!cpw){ errEl.textContent='⚠ All fields are required.'; errEl.classList.add('visible'); return; }
+  if(pw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent='⚠ Invalid email format.'; errEl.classList.add('visible'); return; }
+  if(!/^\d{10}$/.test(mobile)){ errEl.textContent='⚠ Mobile must be exactly 10 digits.'; errEl.classList.add('visible'); return; }
+  if(pw.length!==8){ errEl.textContent='⚠ Password must be exactly 8 characters.'; errEl.classList.add('visible'); return; }
+  btn.disabled=true; btn.textContent='Creating…';
+  try{
+    const j=await api('POST','/create-user',{userId, email, mobile, password:pw});
+    if(j.ok){
+      toast(`User "${j.userId}" created!`);
+      ['u-userid','u-email','u-mobile','u-pw','u-cpw'].forEach(id=>document.getElementById(id).value='');
+      await showDashboard();
+    } else { errEl.textContent='⚠ '+j.error; errEl.classList.add('visible'); }
+  } catch(e){ if(e.message!=='Unauthorized'){ errEl.textContent='⚠ Server error'; errEl.classList.add('visible'); } }
+  btn.disabled=false; btn.textContent='Create User →';
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  EDIT USER
+// ═════════════════════════════════════════════════════════════════════════════
+function previewEditImage(input){
+  if(!input.files||!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const prev = document.getElementById('edit-profile-preview');
+    prev.innerHTML = `<img src="${e.target.result}" alt="preview" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+function openEditUser(userId){
+  const user=_allUsers.find(u=>(u.userId||u.username)===userId);
+  if(!user)return;
+  document.getElementById('edit-user-original-userid').value=userId;
+  document.getElementById('edit-u-userid').value=user.userId||user.username||'';
+  document.getElementById('edit-u-email').value=user.email||'';
+  document.getElementById('edit-u-mobile').value=user.mobile||'';
+  document.getElementById('edit-u-pw').value='';
+  document.getElementById('edit-u-cpw').value='';
+  document.getElementById('edit-user-error').classList.remove('visible');
+
+  // ✅ FIX: Show current profile image in edit modal
+  const prev = document.getElementById('edit-profile-preview');
+  if(user.profileImage){
+    prev.innerHTML=`<img src="${escAttr(SERVER+user.profileImage)}" alt="profile" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  } else {
+    prev.textContent=(user.userId||user.username||'?').slice(0,2).toUpperCase();
+    prev.innerHTML = `<span>${prev.textContent}</span>`;
+    prev.style.fontSize='1.2rem';
+  }
+  // Clear file input
+  document.getElementById('edit-u-img').value='';
+
+  openModal('modal-edit-user');
+}
+
+async function saveEditUser(){
+  const origUserId=document.getElementById('edit-user-original-userid').value;
+  const newUserId=document.getElementById('edit-u-userid').value.trim();
+  const email=document.getElementById('edit-u-email').value.trim();
+  const mobile=document.getElementById('edit-u-mobile').value.trim();
+  const pw=document.getElementById('edit-u-pw').value.trim();
+  const cpw=document.getElementById('edit-u-cpw').value.trim();
+  const imgFile=document.getElementById('edit-u-img').files[0];
+  const errEl=document.getElementById('edit-user-error');
+  const btn=document.getElementById('edit-save-btn');
+  if(!newUserId||!email||!mobile){ errEl.textContent='⚠ User ID, email and mobile are required.'; errEl.classList.add('visible'); return; }
+  if(mobile&&!/^\d{10}$/.test(mobile)){ errEl.textContent='⚠ Mobile must be exactly 10 digits.'; errEl.classList.add('visible'); return; }
+  if(pw&&pw.length!==8){ errEl.textContent='⚠ Password must be exactly 8 characters.'; errEl.classList.add('visible'); return; }
+  if(pw&&pw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
+  btn.disabled=true; btn.textContent='Saving…';
+  try{
+    // 1. Update profile fields
+    const body={email, mobile, newUserId: newUserId!==origUserId?newUserId:undefined};
+    if(pw) body.password=pw;
+    const j=await api('PUT',`/update-user/${encodeURIComponent(origUserId)}`,body);
+    if(!j.ok){ errEl.textContent='⚠ '+j.error; errEl.classList.add('visible'); btn.disabled=false; btn.textContent='✓ Save Changes'; return; }
+
+    // 2. Upload profile image if one was selected
+    const effectiveUserId = j.userId || newUserId || origUserId;
+    if(imgFile){
+      const fd=new FormData();
+      fd.append('file', imgFile, imgFile.name);
+      const ir=await fetch(`${SERVER}/upload/${encodeURIComponent(effectiveUserId)}`,{
+        method:'POST', headers:{'x-admin-token':SESSION_TOKEN||''}, body:fd
+      });
+      if(!ir.ok) toast('Profile saved but image upload failed','error');
+    }
+
+    toast('User updated!');
+    closeModal('modal-edit-user');
+    await refreshDashboard();
+  } catch(e){ if(e.message!=='Unauthorized'){ errEl.textContent='⚠ Server error'; errEl.classList.add('visible'); } }
+  btn.disabled=false; btn.textContent='✓ Save Changes';
+}
+
+async function deleteUser(){
+  const userId=document.getElementById('edit-user-original-userid').value;
+  if(!confirm(`Delete user "${userId}" and ALL their data? This cannot be undone.`))return;
+  try{
+    const j=await api('DELETE',`/api/admin/users/${encodeURIComponent(userId)}`);
+    if(j.ok){ toast('User deleted','info'); closeModal('modal-edit-user'); await refreshDashboard(); }
+    else toast('Delete failed: '+j.error,'error');
+  } catch(e){ if(e.message!=='Unauthorized') toast('Server error','error'); }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  USER DETAIL  — ✅ FIX: shows profile image
+// ═════════════════════════════════════════════════════════════════════════════
+async function openUserDetails(userId){
+  showSection('s-user-detail');
+  document.getElementById('detail-avatar').textContent = userId.slice(0,2).toUpperCase();
+  document.getElementById('detail-name').textContent   = userId;
+  document.getElementById('detail-email-sub').textContent = 'Loading…';
+  document.getElementById('detail-grid').innerHTML     = '';
+  document.getElementById('detail-json').innerHTML     = '';
+  document.getElementById('detail-cards').innerHTML    = 'Loading…';
+  document.getElementById('detail-edit-btn').onclick   = ()=>openEditUser(userId);
+  document.getElementById('detail-img-btn').onclick    = ()=>openImagePanel(userId);
+  try{
+    const [profile, cards] = await Promise.all([
+      api('GET',`/api/user/${encodeURIComponent(userId)}`),
+      api('GET',`/api/users/${encodeURIComponent(userId)}/cards`)
+    ]);
+
+    // ✅ FIX: Render profile image in detail avatar
+    const avatarEl = document.getElementById('detail-avatar');
+    if(profile.profileImage){
+      avatarEl.innerHTML=`<img src="${escAttr(SERVER+profile.profileImage)}" alt="${escAttr(userId)}" onerror="this.style.display='none'">`;
+    } else {
+      avatarEl.textContent = userId.slice(0,2).toUpperCase();
+    }
+
+    document.getElementById('detail-email-sub').textContent = profile.email||'';
+    const fields=[
+      {label:'User ID',     value:profile.userId||userId},
+      {label:'Email',       value:profile.email||'—'},
+      {label:'Mobile',      value:profile.mobile||'—'},
+      {label:'Created At',  value:fmtDate(profile.createdAt)},
+      {label:'Last Sync',   value:fmtDate(profile.updatedAt)},
+      {label:'Profile Image',value:profile.profileImage||'(none)'},
+    ];
+    document.getElementById('detail-grid').innerHTML=fields.map(f=>`
+      <div class="detail-field">
+        <div class="detail-field-label">${f.label}</div>
+        <div class="detail-field-value">${escHtml(String(f.value))}</div>
+      </div>`).join('');
+    document.getElementById('detail-json').innerHTML=syntaxHighlight(JSON.stringify(profile,null,2));
+    if(cards.length){
+      document.getElementById('detail-cards').innerHTML=cards.map((c,i)=>`
+        <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:.8rem 1rem;margin-bottom:.6rem">
+          <span style="font-weight:700;color:var(--text)">Card ${i+1}</span>
+          <span style="margin-left:1rem;color:var(--text3);font-size:.72rem">${escHtml(JSON.stringify(c).slice(0,80))}…</span>
+        </div>`).join('');
+    } else {
+      document.getElementById('detail-cards').innerHTML='<span style="color:var(--text3)">No cards synced yet.</span>';
+    }
+  } catch(e){ if(e.message!=='Unauthorized') toast('Failed to load user detail','error'); }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  IMAGE PANEL
+// ═════════════════════════════════════════════════════════════════════════════
+async function openAllImagesPanel(){
+  document.getElementById('img-panel-uname').textContent='All Users';
+  document.getElementById('img-panel-usub').textContent='Loading all images…';
+  document.getElementById('img-panel-grid').innerHTML='';
+  document.getElementById('img-panel-overlay').classList.add('open');
+  let allImages=[];
+  try{
+    for(const user of _allUsers){
+      const uid=user.userId||user.username;
+      const r=await fetch(`${SERVER}/api/users/${encodeURIComponent(uid)}/images`,{headers:{'x-admin-token':SESSION_TOKEN||''}});
+      if(r.ok){ const files=await r.json(); files.forEach(f=>allImages.push({username:uid,file:f})); }
+    }
+    renderAllImages(allImages);
+  } catch(e){ toast('Failed to load images','error'); }
+}
+
+function renderAllImages(images){
+  const grid=document.getElementById('img-panel-grid');
+  if(!images.length){ grid.innerHTML=`<div class="img-empty" style="grid-column:1/-1"><div class="img-empty-icon">🖼️</div><div>No images found.</div></div>`; return; }
+  grid.innerHTML=images.map(img=>{
+    const basename=img.file.includes('/')?img.file.split('/').pop():img.file;
+    const url=`${SERVER}/api/image/${encodeURIComponent(img.username)}/${encodeURIComponent(basename)}`;
+    const label=img.file.startsWith('cards/')?`${img.username} › cards › ${basename}`:`${img.username} • ${basename}`;
+    return `<div class="img-card" onclick="openLightbox('${escAttr(url)}')">
+      <img src="${escAttr(url)}" loading="lazy">
+      <div class="img-card-label">${escHtml(label)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('img-panel-usub').textContent=`${images.length} total images`;
+}
+
+async function openImagePanel(userId){
+  document.getElementById('img-panel-uname').textContent=userId;
+  document.getElementById('img-panel-usub').textContent='Loading images…';
+  document.getElementById('img-panel-grid').innerHTML='';
+  document.getElementById('img-panel-overlay').classList.add('open');
+  try{
+    const r=await fetch(`${SERVER}/api/users/${encodeURIComponent(userId)}/images`,{headers:{'x-admin-token':SESSION_TOKEN||''}});
+    if(r.ok){
+      const files=await r.json();
+      if(!files.length){
+        document.getElementById('img-panel-usub').textContent='No images synced yet';
+        document.getElementById('img-panel-grid').innerHTML=`<div class="img-empty" style="grid-column:1/-1"><div class="img-empty-icon">🖼️</div><div>No images synced yet.</div></div>`;
+        return;
+      }
+      document.getElementById('img-panel-usub').textContent=`${files.length} image${files.length!==1?'s':''}`;
+      const grid=document.getElementById('img-panel-grid');
+      grid.innerHTML=files.map(f=>{
+        const basename=f.includes('/')?f.split('/').pop():f;
+        const url=`${SERVER}/api/image/${encodeURIComponent(userId)}/${encodeURIComponent(basename)}`;
+        const label=f.startsWith('cards/')?`cards › ${basename}`:basename;
+        return `<div class="img-card" onclick="openLightbox('${escAttr(url)}')">
+          <img src="${escAttr(url)}" loading="lazy">
+          <div class="img-card-label">${escHtml(label)}</div>
+        </div>`;
+      }).join('');
+    } else { document.getElementById('img-panel-usub').textContent='Failed to load'; }
+  } catch(e){ document.getElementById('img-panel-usub').textContent='Error loading images'; }
+}
+
+function closeImagePanel(){ document.getElementById('img-panel-overlay').classList.remove('open'); }
+function openLightbox(src){ document.getElementById('lightbox-img').src=src; document.getElementById('lightbox').classList.add('open'); }
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('open'); document.getElementById('lightbox-img').src=''; }
+
+document.getElementById('img-panel-overlay').addEventListener('click',e=>{ if(e.target===document.getElementById('img-panel-overlay'))closeImagePanel(); });
+document.getElementById('lightbox').addEventListener('click',e=>{ if(e.target===document.getElementById('lightbox')||e.target.classList.contains('lightbox-close'))closeLightbox(); });
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  DOWNLOAD USER DATA AS ZIP
+// ═════════════════════════════════════════════════════════════════════════════
+async function downloadUserData(userId){
+  try{
+    toast(`Preparing ZIP for ${userId}...`,'info');
+    const zip=new JSZip();
+    const profile=await api('GET',`/api/user/${encodeURIComponent(userId)}`);
+    zip.file('user.json',JSON.stringify(profile,null,2));
+    const cards=await api('GET',`/api/users/${encodeURIComponent(userId)}/cards`);
+    zip.file('cards.json',JSON.stringify(cards,null,2));
+    const res=await fetch(`${SERVER}/api/users/${encodeURIComponent(userId)}/images`,{headers:{'x-admin-token':SESSION_TOKEN||''}});
+    let images=[];
+    if(res.ok) images=await res.json();
+    const imgFolder=zip.folder('images');
+    for(const img of images){
+      const basename=img.includes('/')?img.split('/').pop():img;
+      const imgRes=await fetch(`${SERVER}/api/image/${encodeURIComponent(userId)}/${encodeURIComponent(basename)}`,{headers:{'x-admin-token':SESSION_TOKEN||''}});
+      const blob=await imgRes.blob();
+      imgFolder.file(img,blob);
+    }
+    // Also include profile image
+    if(profile.profileImage){
+      const pRes=await fetch(`${SERVER}${profile.profileImage}`,{headers:{'x-admin-token':SESSION_TOKEN||''}});
+      if(pRes.ok){ const blob=await pRes.blob(); zip.file('profile_image'+profile.profileImage.split('.').pop(),blob); }
+    }
+    const content=await zip.generateAsync({type:'blob'});
+    const link=document.createElement('a');
+    link.href=URL.createObjectURL(content);
+    link.download=`${userId}_data.zip`;
+    link.click();
+    toast(`Downloaded ${userId} data`);
+  } catch(e){ if(e.message!=='Unauthorized') toast('Download failed','error'); }
+}
+
+async function syncServer(){
+  toast('Syncing with server...','info');
+  await refreshDashboard();
+  toast('Server synced successfully');
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  NAV / MODAL HELPERS
+// ═════════════════════════════════════════════════════════════════════════════
+function showSection(id){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+}
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{ if(e.target===m) m.classList.remove('open'); });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  TOAST
+// ═════════════════════════════════════════════════════════════════════════════
+function toast(msg,type='success'){
+  const icons={success:'✓',error:'✕',info:'ℹ'};
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;
+  el.innerHTML=`<span>${icons[type]||'ℹ'}</span><span>${escHtml(msg)}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(()=>el.remove(),3100);
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  HELPERS
+// ═════════════════════════════════════════════════════════════════════════════
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s){ return String(s).replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+function fmtDate(iso){
+  if(!iso)return '—';
+  const d=new Date(iso);
+  return isNaN(d)?iso:d.toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function syntaxHighlight(json){
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,m=>{
+    let cls='json-num';
+    if(/^"/.test(m)){cls=/:$/.test(m)?'json-key':'json-str'}
+    else if(/true|false/.test(m))cls='json-bool';
+    else if(/null/.test(m))cls='json-null';
+    return `<span class="${cls}">${m}</span>`;
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  THREE-DOT DROPDOWN
+// ═════════════════════════════════════════════════════════════════════════════
+function toggleRowMenu(btn, uid){
+  const menu = document.getElementById('menu-' + uid);
+  const isOpen = menu.classList.contains('open');
+  document.querySelectorAll('.row-dropdown.open').forEach(m => {
+    m.classList.remove('open');
+    m.style.top = ''; m.style.bottom = ''; m.style.right = '';
+  });
+  document.querySelectorAll('.btn-dots.active').forEach(b => b.classList.remove('active'));
+  if(!isOpen){
+    const rect = btn.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    menu.classList.remove('drop-up');
+    if(spaceBelow < 110){
+      menu.classList.add('drop-up');
+      menu.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+      menu.style.top = 'auto';
+    } else {
+      menu.style.top = (rect.bottom + 6) + 'px';
+      menu.style.bottom = 'auto';
+    }
+    menu.style.right = (window.innerWidth - rect.right) + 'px';
+    menu.classList.add('open');
+    btn.classList.add('active');
+  }
+}
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.row-dropdown.open').forEach(m => {
+    m.classList.remove('open');
+    m.style.top = ''; m.style.bottom = ''; m.style.right = '';
+  });
+  document.querySelectorAll('.btn-dots.active').forEach(b => b.classList.remove('active'));
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  EXPORT — CARDS JSON
+// ═════════════════════════════════════════════════════════════════════════════
+async function exportUserJSON(userId){
+  document.querySelectorAll('.row-dropdown.open').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.btn-dots.active').forEach(b => b.classList.remove('active'));
+  try{
+    toast(`Preparing cards JSON for ${userId}…`, 'info');
+    const cards = await api('GET', `/api/users/${encodeURIComponent(userId)}/cards`);
+    const blob = new Blob([JSON.stringify(cards, null, 2)], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `${userId}_cards.json`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast(`Downloaded ${userId}_cards.json`);
+  } catch(e){ if(e.message !== 'Unauthorized') toast('JSON export failed', 'error'); }
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  EXPORT — CARDS XLSX
+// ═════════════════════════════════════════════════════════════════════════════
+async function exportUserXLSX(userId){
+  document.querySelectorAll('.row-dropdown.open').forEach(m => m.classList.remove('open'));
+  document.querySelectorAll('.btn-dots.active').forEach(b => b.classList.remove('active'));
+  try{
+    toast(`Preparing Excel for ${userId}…`, 'info');
+    const cards = await api('GET', `/api/users/${encodeURIComponent(userId)}/cards`);
+    const wb = XLSX.utils.book_new();
+    if(Array.isArray(cards) && cards.length){
+      const flatCards = cards.map(card => {
+        const row = {};
+        for(const [k, v] of Object.entries(card)){
+          row[k] = typeof v === 'object' ? JSON.stringify(v) : String(v ?? '');
+        }
+        return row;
+      });
+      const wsCards = XLSX.utils.json_to_sheet(flatCards);
+      const keys = Object.keys(flatCards[0] || {});
+      wsCards['!cols'] = keys.map(k => ({ wch: Math.min(40, Math.max(k.length + 2, 14)) }));
+      XLSX.utils.book_append_sheet(wb, wsCards, 'Cards');
+    } else {
+      const wsEmpty = XLSX.utils.aoa_to_sheet([['No cards found for this user.']]);
+      XLSX.utils.book_append_sheet(wb, wsEmpty, 'Cards');
+    }
+    XLSX.writeFile(wb, `${userId}_cards.xlsx`);
+    toast(`Downloaded ${userId}_cards.xlsx`);
+  } catch(e){ if(e.message !== 'Unauthorized') toast('Excel export failed', 'error'); }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter'||document.activeElement.tagName==='TEXTAREA')return;
+  const id=document.querySelector('.section.active')?.id;
+  if(id==='s-login')login();
+  if(id==='s-change-pw')changePassword();
+  if(id==='s-add-user')createUser();
+});
+
+initApp();
+</script>
+</body>
+</html>
