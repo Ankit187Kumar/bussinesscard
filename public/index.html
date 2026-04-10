@@ -200,7 +200,7 @@
   <div class="page-content">
     <div class="page-back" onclick="showDashboard()">← Back to Dashboard</div>
     <div class="page-title">Add New User</div>
-    <div class="page-subtitle">// user authenticates with User ID + Password in the Unity app</div>
+    <div class="page-subtitle"></div>
     <div class="form-card">
       <div id="add-user-error" class="error-msg"></div>
       <div class="form-row">
@@ -216,10 +216,10 @@
       </div>
       <div class="form-row">
         <div class="field">
-          <label>Password <span style="color:var(--text3);font-size:.63rem">(exactly 8 characters)</span></label>
-          <input type="password" id="u-pw" placeholder="••••••••" maxlength="8">
+          <label>Password <span style="color:var(--text3);font-size:.63rem">(Minimum 5 characters)</span></label>
+          <input type="password" id="u-pw" placeholder="•••••" maxlength="5">
         </div>
-        <div class="field"><label>Confirm Password</label><input type="password" id="u-cpw" placeholder="••••••••" maxlength="8"></div>
+        <div class="field"><label>Confirm Password</label><input type="password" id="u-cpw" placeholder="•••••" maxlength="5"></div>
       </div>
       <button class="btn btn-primary" id="create-user-btn" onclick="createUser()">Create User →</button>
     </div>
@@ -242,7 +242,7 @@
         <button class="btn btn-secondary btn-sm" id="detail-img-btn" style="width:auto">👁 View Images</button>
       </div>
     </div>
-    <div class="page-subtitle">// live from server · single source of truth</div>
+    <div class="page-subtitle"></div>
     <div class="detail-header">
       <div class="detail-avatar" id="detail-avatar">?</div>
       <div>
