@@ -63,7 +63,7 @@
     <div class="field"><label>Mobile Number <span style="color:var(--text3);font-size:.63rem">(10 digits)</span></label><input type="tel" id="edit-u-mobile" maxlength="10"></div>
     <div class="form-row">
       <div class="field"><label>New Password <span style="color:var(--text3);font-size:.63rem">(blank = keep)</span></label><input type="password" id="edit-u-pw" placeholder="••••••••" maxlength="8"></div>
-      <div class="field"><label>Confirm Password</label><input type="password" id="edit-u-cpw" placeholder="••••••••" maxlength="8"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="edit-u-cpw" placeholder="••••••••" maxlength="5"></div>
     </div>
     <div class="edit-danger-zone">
       <div class="edit-danger-title">⚠ Danger Zone</div>
@@ -591,7 +591,7 @@ async function createUser(){
   if(pw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent='⚠ Invalid email format.'; errEl.classList.add('visible'); return; }
   if(!/^\d{10}$/.test(mobile)){ errEl.textContent='⚠ Mobile must be exactly 10 digits.'; errEl.classList.add('visible'); return; }
-  if(pw.length!==8){ errEl.textContent='⚠ Password must be exactly 8 characters.'; errEl.classList.add('visible'); return; }
+  if(pw.length!==8){ errEl.textContent='⚠ Password must be exactly 5 characters.'; errEl.classList.add('visible'); return; }
   btn.disabled=true; btn.textContent='Creating…';
   try{
     const j=await api('POST','/create-user',{userId, email, mobile, password:pw});
@@ -655,7 +655,7 @@ async function saveEditUser(){
   const btn=document.getElementById('edit-save-btn');
   if(!newUserId||!email||!mobile){ errEl.textContent='⚠ User ID, email and mobile are required.'; errEl.classList.add('visible'); return; }
   if(mobile&&!/^\d{10}$/.test(mobile)){ errEl.textContent='⚠ Mobile must be exactly 10 digits.'; errEl.classList.add('visible'); return; }
-  if(pw&&pw.length!==8){ errEl.textContent='⚠ Password must be exactly 8 characters.'; errEl.classList.add('visible'); return; }
+  if(pw&&pw.length!==5){ errEl.textContent='⚠ Password must be exactly 5 characters.'; errEl.classList.add('visible'); return; }
   if(pw&&pw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
   btn.disabled=true; btn.textContent='Saving…';
   try{
