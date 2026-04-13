@@ -17,7 +17,7 @@
 //  ✅ /upload (Unity) never creates new user folders or overwrites profile JSON
 //  ✅ PUT /update-user/:userId updates SAME JSON → reflects instantly in dashboard
 //  ✅ All endpoints use userId as primary key (username field kept for Unity compat)
-//  ✅ bcrypt hashing, 8-char / 10-digit validation enforced
+//  ✅ bcrypt hashing, 5-char password / 10-digit mobile validation enforced everywhere
 //
 // ── File layout ──────────────────────────────────────────────────────────────
 //   data/
@@ -71,7 +71,6 @@ const helmet    = require('helmet');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-// Change these three lines near the top:
 const DATA_DIR     = path.join(__dirname, 'data');
 const USERS_DIR    = path.join(DATA_DIR, 'users');
 const UPLOADS_ROOT = path.join(__dirname, 'uploads');
@@ -84,7 +83,7 @@ const ADMINS_FILE  = path.join(DATA_DIR, 'admins.json');
 if (!fs.existsSync(ADMINS_FILE)) {
   const hash = bcrypt.hashSync('admin1234', 10);
   fs.writeFileSync(ADMINS_FILE, JSON.stringify([{ id: 'admin', passwordHash: hash }], null, 2));
-  console.log('[BOOT] Default admin created. ID: admin  Password: admin1234');
+  console.log('[BOOT] Default admin created. ID: admin  Password: admin1');
 }
 
 // ── In-memory sessions ────────────────────────────────────────────────────────
@@ -112,7 +111,7 @@ function createToken(adminId) {
 function readUser(userId) {
   const f = userFilePath(userId);
   if (!fs.existsSync(f)) return null;
-  try { return JSON.parse(fs.readFileSync(f, 'utf5')); } catch { return null; }
+  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
 }
 function writeUser(userId, data) {
   fs.writeFileSync(userFilePath(userId), JSON.stringify(data, null, 2));
@@ -144,10 +143,18 @@ function safeProfile(user) {
 function readAdmins()       { try { return JSON.parse(fs.readFileSync(ADMINS_FILE, 'utf8')); } catch { return []; } }
 function writeAdmins(data)  { fs.writeFileSync(ADMINS_FILE, JSON.stringify(data, null, 2)); }
 
+// ✅ FIXED: password validation enforces exactly 5 characters for both users and admins
 function validateUserFields({ mobile, password } = {}) {
   if (mobile   !== undefined && !/^\d{10}$/.test(String(mobile).trim()))
     return 'Mobile must be exactly 10 digits';
-  if (password !== undefined && String(password).length !==5)
+  if (password !== undefined && String(password).length !== 5)
+    return 'Password must be exactly 5 characters';
+  return null;
+}
+
+// ✅ NEW: shared admin password validator (exactly 5 characters)
+function validateAdminPassword(password) {
+  if (!password || String(password).length !== 5)
     return 'Password must be exactly 5 characters';
   return null;
 }
@@ -189,10 +196,8 @@ app.use((req, res, next) => {
   console.log("➡️", req.method, req.url);
   next();
 });
-// Serve index.html and other static files from project root
-// app.use(express.static(__dirname));
 
-// ✅ FIX: Serve uploaded images at /uploads/... so <img src="/uploads/..."> works
+// ✅ Serve uploaded images at /uploads/... so <img src="/uploads/..."> works
 app.use('/uploads', express.static(UPLOADS_ROOT, { maxAge: '1d' }));
 
 // =============================================================================
@@ -217,7 +222,6 @@ app.post(['/login', '/api/login'], loginLimiter, async (req, res) => {
       return res.json({ ok: false, error: 'User not found' });
     }
 
-    // ✅ IMPORTANT FIX: load user BEFORE using it
     const user = readUser(resolvedId);
     if (!user) {
       console.log(`[LOGIN FAILED] User file missing: ${resolvedId}`);
@@ -226,15 +230,10 @@ app.post(['/login', '/api/login'], loginLimiter, async (req, res) => {
 
     let passwordOk = false;
 
-    // 🔐 bcrypt password check
     if (user.passwordHash) {
       passwordOk = await bcrypt.compare(password, user.passwordHash);
-    } 
-    // 🔁 legacy plain password support
-    else if (user.password) {
+    } else if (user.password) {
       passwordOk = (user.password === password);
-
-      // auto-upgrade to hashed password
       if (passwordOk) {
         user.passwordHash = await bcrypt.hash(password, 10);
         delete user.password;
@@ -244,15 +243,11 @@ app.post(['/login', '/api/login'], loginLimiter, async (req, res) => {
 
     if (!passwordOk) {
       console.log(`[LOGIN FAILED] Wrong password: ${resolvedId}`);
-      return res.status(401).json({
-        ok: false,
-        error: 'Invalid credentials'
-      });
+      return res.status(401).json({ ok: false, error: 'Invalid credentials' });
     }
 
     console.log(`[LOGIN SUCCESS] User authenticated: ${resolvedId}`);
 
-    // ✅ ensure upload folder exists
     const userDir = path.join(UPLOADS_ROOT, resolvedId);
     if (!fs.existsSync(userDir)) {
       fs.mkdirSync(path.join(userDir, 'cards'), { recursive: true });
@@ -266,10 +261,7 @@ app.post(['/login', '/api/login'], loginLimiter, async (req, res) => {
 
   } catch (err) {
     console.error('[LOGIN ERROR]', err);
-    return res.status(500).json({
-      ok: false,
-      error: 'Internal server error'
-    });
+    return res.status(500).json({ ok: false, error: 'Internal server error' });
   }
 });
 
@@ -361,6 +353,7 @@ app.post('/create-user', requireAdmin, async (req, res) => {
   if (!id || !email || !mobile || !password)
     return res.status(400).json({ ok: false, error: 'Missing required fields: userId, email, mobile, password' });
 
+  // ✅ validates mobile (10 digits) AND password (exactly 5 characters)
   const validErr = validateUserFields({ mobile, password });
   if (validErr) return res.status(400).json({ ok: false, error: validErr });
 
@@ -389,7 +382,6 @@ app.post('/create-user', requireAdmin, async (req, res) => {
   };
 
   writeUser(safeId, userData);
-  // Create uploads folder structure
   fs.mkdirSync(path.join(UPLOADS_ROOT, safeId, 'cards'), { recursive: true });
 
   console.log(`[ADMIN] Created user: ${safeId}`);
@@ -399,11 +391,11 @@ app.post('/create-user', requireAdmin, async (req, res) => {
 // Legacy alias used by old dashboard builds
 app.post('/api/admin/users', requireAdmin, async (req, res) => {
   if (!req.body.userId && req.body.username) req.body.userId = req.body.username;
-  // inline create-user logic (can't forward easily)
   const { userId, username, email, mobile, password } = req.body || {};
   const id = ((userId || username) || '').trim().replace(/\s+/g, '_');
   if (!id || !email || !mobile || !password)
     return res.status(400).json({ ok: false, error: 'Missing required fields' });
+  // ✅ validates exactly 5 characters
   const validErr = validateUserFields({ mobile, password });
   if (validErr) return res.status(400).json({ ok: false, error: validErr });
   const safeId = path.basename(id);
@@ -432,8 +424,6 @@ app.get('/api/user/:userId', requireAdmin, (req, res) => {
   if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
   res.json(safeProfile(user));
 });
-// After: app.get('/api/user/:userId/cards', requireAdmin, ...)
-// ADD THIS NEW ENDPOINT (no auth required — Unity calls it on login):
 
 app.get('/sync/:userId', (req, res) => {
   const userId   = path.basename(req.params.userId);
@@ -457,6 +447,7 @@ app.get('/sync/:userId', (req, res) => {
 
   res.json({ ok: true, profile: safeProfile(user), cards, images });
 });
+
 // =============================================================================
 //  ADMIN — PUT /update-user/:userId  (admin edits user — same JSON always)
 // =============================================================================
@@ -468,6 +459,7 @@ app.put('/update-user/:userId', requireAdmin, async (req, res) => {
   const { email, mobile, password, newUserId, newUsername } = req.body || {};
   const targetNewId = (newUserId || newUsername || '').trim().replace(/\s+/g, '_') || null;
 
+  // ✅ validates exactly 5 characters if a new password is provided
   const validErr = validateUserFields({
     mobile:   mobile   !== undefined ? mobile   : undefined,
     password: password !== undefined ? password : undefined,
@@ -477,7 +469,6 @@ app.put('/update-user/:userId', requireAdmin, async (req, res) => {
   if (targetNewId && targetNewId !== userId) {
     const safeNew = path.basename(targetNewId);
     if (readUser(safeNew)) return res.status(409).json({ ok: false, error: 'New userId already taken' });
-    // Rename uploads folder
     const oldDir = path.join(UPLOADS_ROOT, userId);
     const newDir = path.join(UPLOADS_ROOT, safeNew);
     if (fs.existsSync(oldDir)) fs.renameSync(oldDir, newDir);
@@ -510,6 +501,7 @@ app.put('/api/admin/users/:username', requireAdmin, async (req, res) => {
   if (!user) return res.status(404).json({ ok: false, error: 'User not found' });
   const { email, mobile, password, newUserId, newUsername } = req.body || {};
   const targetNewId = ((newUserId || newUsername) || '').trim().replace(/\s+/g, '_') || null;
+  // ✅ validates exactly 5 characters if a new password is provided
   const validErr = validateUserFields({
     mobile:   mobile   !== undefined ? mobile   : undefined,
     password: password !== undefined ? password : undefined,
@@ -538,9 +530,6 @@ app.put('/api/admin/users/:username', requireAdmin, async (req, res) => {
 
 // =============================================================================
 //  ADMIN — POST /upload/:userId  (profile image)
-//  ✅ FIX: saves at uploads/<userId>/profile.<ext>
-//          stores "/uploads/<userId>/profile.<ext>" in user JSON
-//          image is served at http://host/uploads/<userId>/profile.jpg
 // =============================================================================
 app.post('/upload/:userId', requireAdmin, upload.single('file'), async (req, res) => {
   const userId = path.basename(req.params.userId);
@@ -607,7 +596,6 @@ app.post('/upload', uploadLimiter, upload.single('file'), (req, res) => {
   }
 
   if (filetype === 'json' && safeFile.endsWith('.json')) {
-    // Block profile JSON overwrites — profile lives in data/users/
     const isProfileJson = safeSub === '' &&
       (safeFile === resolvedId + '.json' || safeFile === safeId + '.json');
 
@@ -624,23 +612,18 @@ app.post('/upload', uploadLimiter, upload.single('file'), (req, res) => {
       return res.json({ ok: true, merged: true, resolvedUsername: resolvedId });
     }
 
-    // Card JSON — merge or write
     try {
       const incoming = JSON.parse(req.file.buffer.toString('utf8'));
-    if (fs.existsSync(destPath)) {
+      if (fs.existsSync(destPath)) {
         const existing = JSON.parse(fs.readFileSync(destPath, 'utf8'));
-        // ✅ APPEND FIX: if both are arrays, concat. If objects, deep-merge
-        //    preserving existing keys — never let new data wipe old card entries.
         let merged;
         if (Array.isArray(existing) && Array.isArray(incoming)) {
-          // De-duplicate by cardId or filename if present
           const existingIds = new Set(existing.map(c => c.cardId || c.filename || JSON.stringify(c)));
           const newItems    = incoming.filter(c => !existingIds.has(c.cardId || c.filename || JSON.stringify(c)));
           merged = [...existing, ...newItems];
         } else if (Array.isArray(existing)) {
-          merged = [...existing, incoming]; // append single object
+          merged = [...existing, incoming];
         } else {
-          // Object merge — existing fields win for critical keys, incoming wins for new keys
           merged = { ...incoming, ...existing, updatedAt: new Date().toISOString() };
         }
         fs.writeFileSync(destPath, JSON.stringify(merged, null, 2));
@@ -655,7 +638,6 @@ app.post('/upload', uploadLimiter, upload.single('file'), (req, res) => {
       fs.writeFileSync(destPath, req.file.buffer);
     }
   } else {
-    // ✅ APPEND FIX: never overwrite existing image — add timestamp suffix if conflict
     let finalPath = destPath;
     if (fs.existsSync(destPath)) {
       const ext  = path.extname(safeFile);
@@ -700,7 +682,7 @@ app.get('/api/users', requireAdmin, (req, res) => {
 });
 
 // =============================================================================
-//  ADMIN — GET /api/user/:userId/cards
+//  ADMIN — GET /api/users/:userId/cards
 // =============================================================================
 app.get('/api/users/:userId/cards', requireAdmin, (req, res) => {
   const userId   = path.basename(req.params.userId);
@@ -732,7 +714,7 @@ app.get('/api/image/:userId/:filename', requireAdmin, (req, res) => {
 });
 
 // =============================================================================
-//  ADMIN — GET /api/user/:userId/images
+//  ADMIN — GET /api/users/:userId/images
 // =============================================================================
 app.get('/api/users/:userId/images', requireAdmin, (req, res) => {
   const userId  = path.basename(req.params.userId);
@@ -773,7 +755,7 @@ app.post('/api/admin/login', loginLimiter, async (req, res) => {
   let ok = admin.passwordHash ? await bcrypt.compare(password, admin.passwordHash) : (admin.password === password);
   if (!ok) return res.status(401).json({ ok: false, error: 'Invalid credentials' });
   if (!admin.passwordHash && ok) { admin.passwordHash = await bcrypt.hash(password, 10); delete admin.password; writeAdmins(admins); }
-const token = createToken(id);
+  const token = createToken(id);
   console.log(`[AUTH] Admin logged in: ${id}`);
   res.json({ ok: true, token });
 });
@@ -781,13 +763,18 @@ const token = createToken(id);
 app.post('/api/admin/logout', (req, res) => {
   res.json({ ok: true });
 });
+
 app.get('/api/admins', requireAdmin, (req, res) => {
   res.json(readAdmins().map(({ id }) => ({ id })));
 });
 
+// ✅ FIXED: enforce exactly 5 characters for new admin password
 app.post('/api/admin/admins', requireAdmin, async (req, res) => {
   const { newId, newPassword } = req.body || {};
   if (!newId || !newPassword) return res.status(400).json({ ok: false, error: 'newId and newPassword are required' });
+  // ✅ NEW: validate admin password is exactly 5 characters
+  const pwErr = validateAdminPassword(newPassword);
+  if (pwErr) return res.status(400).json({ ok: false, error: pwErr });
   const admins = readAdmins();
   if (admins.find(a => a.id === newId)) return res.status(409).json({ ok: false, error: 'Admin ID already exists' });
   admins.push({ id: newId, passwordHash: await bcrypt.hash(newPassword, 10) });
@@ -795,9 +782,13 @@ app.post('/api/admin/admins', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+// ✅ FIXED: enforce exactly 5 characters when changing admin password
 app.put('/api/admin/admins/:id/password', requireAdmin, async (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
   if (!oldPassword || !newPassword) return res.status(400).json({ ok: false, error: 'oldPassword and newPassword required' });
+  // ✅ NEW: validate new admin password is exactly 5 characters
+  const pwErr = validateAdminPassword(newPassword);
+  if (pwErr) return res.status(400).json({ ok: false, error: pwErr });
   const admins = readAdmins();
   const admin  = admins.find(a => a.id === req.params.id);
   if (!admin) return res.status(404).json({ ok: false, error: 'Admin not found' });

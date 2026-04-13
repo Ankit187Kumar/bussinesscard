@@ -62,8 +62,9 @@
     </div>
     <div class="field"><label>Mobile Number <span style="color:var(--text3);font-size:.63rem">(10 digits)</span></label><input type="tel" id="edit-u-mobile" maxlength="10"></div>
     <div class="form-row">
-      <div class="field"><label>New Password <span style="color:var(--text3);font-size:.63rem">(blank = keep)</span></label><input type="password" id="edit-u-pw" placeholder="••••••••" maxlength="8"></div>
-      <div class="field"><label>Confirm Password</label><input type="password" id="edit-u-cpw" placeholder="••••••••" maxlength="5"></div>
+      <!-- ✅ FIXED: maxlength="5" on both password fields, placeholder updated -->
+      <div class="field"><label>New Password <span style="color:var(--text3);font-size:.63rem">(blank = keep · exactly 5 chars)</span></label><input type="password" id="edit-u-pw" placeholder="•••••" maxlength="5"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="edit-u-cpw" placeholder="•••••" maxlength="5"></div>
     </div>
     <div class="edit-danger-zone">
       <div class="edit-danger-title">⚠ Danger Zone</div>
@@ -84,7 +85,7 @@
     <div class="auth-subtitle"></div>
     <div id="login-error" class="error-msg"></div>
     <div class="field"><label>Admin ID</label><input type="text" id="login-id" placeholder="admin" autocomplete="username"></div>
-    <div class="field"><label>Password</label><input type="password" id="login-pw" placeholder="••••••" autocomplete="current-password"></div>
+    <div class="field"><label>Password</label><input type="password" id="login-pw" placeholder="•••••" autocomplete="current-password"></div>
     <button class="btn btn-primary" id="login-btn" onclick="login()">Sign In →</button>
     <div class="auth-links">
       <button class="btn btn-ghost" onclick="showSection('s-create-admin')">+ Create Admin</button>
@@ -107,14 +108,16 @@
     <div id="ca-step1">
       <div id="ca-verify-error" class="error-msg">⚠ Verification failed.</div>
       <div class="field"><label>Existing Admin ID</label><input type="text" id="ca-vid" placeholder="admin"></div>
-      <div class="field"><label>Password</label><input type="password" id="ca-vpw" placeholder="••••••"></div>
+      <!-- ✅ FIXED: maxlength="5" on verify password -->
+      <div class="field"><label>Password</label><input type="password" id="ca-vpw" placeholder="•••••" maxlength="5"></div>
       <button class="btn btn-primary" id="ca-verify-btn" onclick="verifyAdminForCreate()">Verify →</button>
     </div>
     <div id="ca-step2" style="display:none">
       <div id="ca-create-error" class="error-msg"></div>
       <div class="field"><label>New Admin ID</label><input type="text" id="ca-nid" placeholder="newadmin"></div>
-      <div class="field"><label>New Password</label><input type="password" id="ca-npw" placeholder="••••••"></div>
-      <div class="field"><label>Confirm Password</label><input type="password" id="ca-cpw" placeholder="••••••"></div>
+      <!-- ✅ FIXED: maxlength="5" and hint label on both new admin password fields -->
+      <div class="field"><label>New Password <span style="color:var(--text3);font-size:.63rem">(exactly 5 characters)</span></label><input type="password" id="ca-npw" placeholder="•••••" maxlength="5"></div>
+      <div class="field"><label>Confirm Password</label><input type="password" id="ca-cpw" placeholder="•••••" maxlength="5"></div>
       <button class="btn btn-primary" id="ca-create-btn" onclick="createAdmin()">Create Admin →</button>
     </div>
     <div class="auth-links"><button class="btn btn-ghost" onclick="showSection('s-login')">← Back to Login</button></div>
@@ -130,9 +133,10 @@
     <div id="cp-error" class="error-msg"></div>
     <div id="cp-success" class="success-msg">✓ Password updated successfully.</div>
     <div class="field"><label>Admin ID</label><input type="text" id="cp-id" placeholder="admin"></div>
-    <div class="field"><label>Old Password</label><input type="password" id="cp-old" placeholder="••••••"></div>
-    <div class="field"><label>New Password</label><input type="password" id="cp-new" placeholder="••••••"></div>
-    <div class="field"><label>Confirm New Password</label><input type="password" id="cp-confirm" placeholder="••••••"></div>
+    <!-- ✅ FIXED: maxlength="5" on all change-password fields -->
+    <div class="field"><label>Old Password</label><input type="password" id="cp-old" placeholder="•••••" maxlength="5"></div>
+    <div class="field"><label>New Password <span style="color:var(--text3);font-size:.63rem">(exactly 5 characters)</span></label><input type="password" id="cp-new" placeholder="•••••" maxlength="5"></div>
+    <div class="field"><label>Confirm New Password</label><input type="password" id="cp-confirm" placeholder="•••••" maxlength="5"></div>
     <button class="btn btn-primary" id="cp-btn" onclick="changePassword()">Update Password →</button>
     <div class="auth-links"><button class="btn btn-ghost" onclick="showSection('s-login')">← Back to Login</button></div>
   </div>
@@ -215,8 +219,9 @@
         <input type="tel" id="u-mobile" placeholder="9876543210" maxlength="10">
       </div>
       <div class="form-row">
+        <!-- ✅ FIXED: maxlength="5" on both user password fields, placeholder updated -->
         <div class="field">
-          <label>Password <span style="color:var(--text3);font-size:.63rem">(Minimum 5 characters)</span></label>
+          <label>Password <span style="color:var(--text3);font-size:.63rem">(exactly 5 characters)</span></label>
           <input type="password" id="u-pw" placeholder="•••••" maxlength="5">
         </div>
         <div class="field"><label>Confirm Password</label><input type="password" id="u-cpw" placeholder="•••••" maxlength="5"></div>
@@ -393,13 +398,17 @@ async function verifyAdminForCreate(){
   btn.disabled=false; btn.textContent='Verify →';
 }
 
+// ✅ FIXED: createAdmin now validates password is exactly 5 characters
 async function createAdmin(){
   const nid=document.getElementById('ca-nid').value.trim();
   const npw=document.getElementById('ca-npw').value.trim();
   const cpw=document.getElementById('ca-cpw').value.trim();
   const errEl=document.getElementById('ca-create-error');
   const btn=document.getElementById('ca-create-btn');
+  errEl.classList.remove('visible');
   if(!nid||!npw||!cpw){ errEl.textContent='⚠ All fields required.'; errEl.classList.add('visible'); return; }
+  // ✅ NEW: enforce exactly 5 characters
+  if(npw.length!==5){ errEl.textContent='⚠ Password must be exactly 5 characters.'; errEl.classList.add('visible'); return; }
   if(npw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
   btn.disabled=true; btn.textContent='Creating…';
   try{
@@ -422,6 +431,7 @@ async function createAdmin(){
   btn.disabled=false; btn.textContent='Create Admin →';
 }
 
+// ✅ FIXED: changePassword validates new password is exactly 5 characters
 async function changePassword(){
   const id=document.getElementById('cp-id').value.trim();
   const oldPw=document.getElementById('cp-old').value.trim();
@@ -430,8 +440,11 @@ async function changePassword(){
   const errEl=document.getElementById('cp-error');
   const okEl=document.getElementById('cp-success');
   const btn=document.getElementById('cp-btn');
+  errEl.classList.remove('visible');
   okEl.classList.remove('visible');
   if(!id||!oldPw||!newPw||!conf){ errEl.textContent='⚠ All fields required.'; errEl.classList.add('visible'); return; }
+  // ✅ NEW: enforce exactly 5 characters
+  if(newPw.length!==5){ errEl.textContent='⚠ New password must be exactly 5 characters.'; errEl.classList.add('visible'); return; }
   if(newPw!==conf){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
   btn.disabled=true; btn.textContent='Updating…';
   try{
@@ -496,7 +509,6 @@ function renderTable(search=''){
     const timeStr=dt?dt.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}):'';
     const uid = user.userId || user.username || '?';
     const initials = uid.slice(0,2).toUpperCase();
-    // ✅ FIX: show profile image if available
     const avatarContent = user.profileImage
       ? `<img src="${escAttr(SERVER + user.profileImage)}" alt="${escAttr(uid)}" onerror="this.style.display='none';this.parentNode.textContent='${escAttr(initials)}';">`
       : escHtml(initials);
@@ -576,7 +588,9 @@ async function openAdminsModal(){
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  ADD USER  (uses userId as primary key)
+//  ADD USER
+// ✅ FIXED: password check now correctly enforces exactly 5 characters
+//           (was incorrectly checking pw.length!==8 before)
 // ═════════════════════════════════════════════════════════════════════════════
 async function createUser(){
   const userId = document.getElementById('u-userid').value.trim();
@@ -591,7 +605,8 @@ async function createUser(){
   if(pw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.textContent='⚠ Invalid email format.'; errEl.classList.add('visible'); return; }
   if(!/^\d{10}$/.test(mobile)){ errEl.textContent='⚠ Mobile must be exactly 10 digits.'; errEl.classList.add('visible'); return; }
-  if(pw.length!==8){ errEl.textContent='⚠ Password must be exactly 5 characters.'; errEl.classList.add('visible'); return; }
+  // ✅ FIXED: was pw.length!==8 (bug), now correctly pw.length!==5
+  if(pw.length!==5){ errEl.textContent='⚠ Password must be exactly 5 characters.'; errEl.classList.add('visible'); return; }
   btn.disabled=true; btn.textContent='Creating…';
   try{
     const j=await api('POST','/create-user',{userId, email, mobile, password:pw});
@@ -628,7 +643,6 @@ function openEditUser(userId){
   document.getElementById('edit-u-cpw').value='';
   document.getElementById('edit-user-error').classList.remove('visible');
 
-  // ✅ FIX: Show current profile image in edit modal
   const prev = document.getElementById('edit-profile-preview');
   if(user.profileImage){
     prev.innerHTML=`<img src="${escAttr(SERVER+user.profileImage)}" alt="profile" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
@@ -637,12 +651,11 @@ function openEditUser(userId){
     prev.innerHTML = `<span>${prev.textContent}</span>`;
     prev.style.fontSize='1.2rem';
   }
-  // Clear file input
   document.getElementById('edit-u-img').value='';
-
   openModal('modal-edit-user');
 }
 
+// ✅ FIXED: edit user password validation uses exactly 5 characters
 async function saveEditUser(){
   const origUserId=document.getElementById('edit-user-original-userid').value;
   const newUserId=document.getElementById('edit-u-userid').value.trim();
@@ -653,19 +666,19 @@ async function saveEditUser(){
   const imgFile=document.getElementById('edit-u-img').files[0];
   const errEl=document.getElementById('edit-user-error');
   const btn=document.getElementById('edit-save-btn');
+  errEl.classList.remove('visible');
   if(!newUserId||!email||!mobile){ errEl.textContent='⚠ User ID, email and mobile are required.'; errEl.classList.add('visible'); return; }
   if(mobile&&!/^\d{10}$/.test(mobile)){ errEl.textContent='⚠ Mobile must be exactly 10 digits.'; errEl.classList.add('visible'); return; }
+  // ✅ FIXED: enforce exactly 5 characters (was !== 5 which was correct but now consistent)
   if(pw&&pw.length!==5){ errEl.textContent='⚠ Password must be exactly 5 characters.'; errEl.classList.add('visible'); return; }
   if(pw&&pw!==cpw){ errEl.textContent='⚠ Passwords do not match.'; errEl.classList.add('visible'); return; }
   btn.disabled=true; btn.textContent='Saving…';
   try{
-    // 1. Update profile fields
     const body={email, mobile, newUserId: newUserId!==origUserId?newUserId:undefined};
     if(pw) body.password=pw;
     const j=await api('PUT',`/update-user/${encodeURIComponent(origUserId)}`,body);
     if(!j.ok){ errEl.textContent='⚠ '+j.error; errEl.classList.add('visible'); btn.disabled=false; btn.textContent='✓ Save Changes'; return; }
 
-    // 2. Upload profile image if one was selected
     const effectiveUserId = j.userId || newUserId || origUserId;
     if(imgFile){
       const fd=new FormData();
@@ -694,7 +707,7 @@ async function deleteUser(){
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-//  USER DETAIL  — ✅ FIX: shows profile image
+//  USER DETAIL
 // ═════════════════════════════════════════════════════════════════════════════
 async function openUserDetails(userId){
   showSection('s-user-detail');
@@ -712,7 +725,6 @@ async function openUserDetails(userId){
       api('GET',`/api/users/${encodeURIComponent(userId)}/cards`)
     ]);
 
-    // ✅ FIX: Render profile image in detail avatar
     const avatarEl = document.getElementById('detail-avatar');
     if(profile.profileImage){
       avatarEl.innerHTML=`<img src="${escAttr(SERVER+profile.profileImage)}" alt="${escAttr(userId)}" onerror="this.style.display='none'">`;
@@ -838,7 +850,6 @@ async function downloadUserData(userId){
       const blob=await imgRes.blob();
       imgFolder.file(img,blob);
     }
-    // Also include profile image
     if(profile.profileImage){
       const pRes=await fetch(`${SERVER}${profile.profileImage}`,{headers:{'x-admin-token':SESSION_TOKEN||''}});
       if(pRes.ok){ const blob=await pRes.blob(); zip.file('profile_image'+profile.profileImage.split('.').pop(),blob); }
