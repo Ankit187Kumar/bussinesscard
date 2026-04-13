@@ -112,7 +112,7 @@ function createToken(adminId) {
 function readUser(userId) {
   const f = userFilePath(userId);
   if (!fs.existsSync(f)) return null;
-  try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return null; }
+  try { return JSON.parse(fs.readFileSync(f, 'utf5')); } catch { return null; }
 }
 function writeUser(userId, data) {
   fs.writeFileSync(userFilePath(userId), JSON.stringify(data, null, 2));
@@ -147,8 +147,8 @@ function writeAdmins(data)  { fs.writeFileSync(ADMINS_FILE, JSON.stringify(data,
 function validateUserFields({ mobile, password } = {}) {
   if (mobile   !== undefined && !/^\d{10}$/.test(String(mobile).trim()))
     return 'Mobile must be exactly 10 digits';
-  if (password !== undefined && String(password).length !== 8)
-    return 'Password must be exactly 8 characters';
+  if (password !== undefined && String(password).length !==5)
+    return 'Password must be exactly 5 characters';
   return null;
 }
 
