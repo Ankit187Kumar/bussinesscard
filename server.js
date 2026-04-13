@@ -145,20 +145,23 @@ function writeAdmins(data)  { fs.writeFileSync(ADMINS_FILE, JSON.stringify(data,
 
 // ✅ FIXED: password validation enforces exactly 5 characters for both users and admins
 function validateUserFields({ mobile, password } = {}) {
-  if (mobile   !== undefined && !/^\d{10}$/.test(String(mobile).trim()))
+  if (mobile !== undefined && !/^\d{10}$/.test(String(mobile).trim()))
     return 'Mobile must be exactly 10 digits';
-  if (password !== undefined && String(password).length !== 5)
-    return 'Password must be exactly 5 characters';
+
+  // ✅ Minimum 5 characters
+  if (password !== undefined && String(password).length < 5)
+    return 'Password must be at least 5 characters';
+
   return null;
 }
 
-// ✅ NEW: shared admin password validator (exactly 5 characters)
+// ✅ Admin password validator (minimum 5 characters)
 function validateAdminPassword(password) {
-  if (!password || String(password).length !== 5)
-    return 'Password must be exactly 5 characters';
+  if (!password || String(password).length < 5)
+    return 'Password must be at least 5 characters';
+
   return null;
 }
-
 // ── Multer (memory storage) ───────────────────────────────────────────────────
 const upload = multer({
   storage: multer.memoryStorage(),
