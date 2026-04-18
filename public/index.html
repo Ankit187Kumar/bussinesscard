@@ -164,7 +164,7 @@
       </div>
       <div class="stat-card" onclick="openAllImagesPanel()">
         <div class="stat-icon green">📷</div>
-        <div><div class="stat-num" id="stat-images">—</div><div class="stat-label">Total Images</div></div>
+        <div><div class="stat-num" id="stat-images">—</div><div class="stat-label">Total Cards</div></div>
       </div>
     </div>
     <div class="controls">
@@ -244,7 +244,7 @@
       <div class="page-title" style="margin-bottom:0">User Detail</div>
       <div style="display:flex;gap:.6rem">
         <button class="btn btn-secondary btn-sm" id="detail-edit-btn" style="width:auto">✏ Edit User</button>
-        <button class="btn btn-secondary btn-sm" id="detail-img-btn" style="width:auto">👁 View Images</button>
+        <button class="btn btn-secondary btn-sm" id="detail-img-btn" style="width:auto">👁 View Cards</button>
       </div>
     </div>
     <div class="page-subtitle"></div>
@@ -526,7 +526,7 @@ function renderTable(search=''){
       <td><span class="td-stats">📷 ${user.totalImages||0} &nbsp; 🪪 ${user.totalCards||0}</span></td>
       <td><div class="td-date"><span class="date-main">${dateStr}</span><span class="date-time">${timeStr}</span></div></td>
       <td><div class="actions-cell">
-        <button class="btn-view"  onclick="event.stopPropagation();openImagePanel('${escAttr(uid)}')">👁 Images</button>
+        <button class="btn-view"  onclick="event.stopPropagation();openImagePanel('${escAttr(uid)}')">👁 Cards</button>
         <button class="btn-dl"    onclick="event.stopPropagation();downloadUserData('${escAttr(uid)}')">↓ ZIP</button>
         <button class="btn-edit"  onclick="event.stopPropagation();openEditUser('${escAttr(uid)}')">✏ Edit</button>
         <div class="dots-wrap" onclick="event.stopPropagation()">
