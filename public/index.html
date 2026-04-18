@@ -803,8 +803,8 @@ async function openImagePanel(userId){
     if(r.ok){
       const files=await r.json();
       if(!files.length){
-        document.getElementById('img-panel-usub').textContent='No images synced yet';
-        document.getElementById('img-panel-grid').innerHTML=`<div class="img-empty" style="grid-column:1/-1"><div class="img-empty-icon">🖼️</div><div>No images synced yet.</div></div>`;
+        document.getElementById('img-panel-usub').textContent='No Cards synced yet';
+        document.getElementById('img-panel-grid').innerHTML=`<div class="img-empty" style="grid-column:1/-1"><div class="img-empty-icon">🖼️</div><div>No Cards synced yet.</div></div>`;
         return;
       }
       document.getElementById('img-panel-usub').textContent=`${files.length} image${files.length!==1?'s':''}`;
