@@ -33,6 +33,20 @@
   </div>
 </div>
 
+<!-- MODAL: JSON Data -->
+<div id="modal-json-view" class="modal-overlay">
+  <div class="modal md">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-json-title">{ } User Data</div>
+      <button class="modal-close" onclick="closeModal('modal-json-view')">✕</button>
+    </div>
+    <div style="padding:0 1.2rem 1.2rem">
+      <button class="btn btn-secondary btn-sm" id="json-copy-btn" style="width:auto;margin-bottom:.6rem" onclick="copyJsonView()">⧉ Copy JSON</button>
+      <pre id="modal-json-body" style="max-height:60vh;overflow:auto;background:#0f1117;color:#d8e0ee;padding:1rem;border-radius:8px;font-family:var(--mono);font-size:.78rem;white-space:pre-wrap;word-break:break-word;"></pre>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Edit User -->
 <div id="modal-edit-user" class="modal-overlay">
   <div class="modal md">
@@ -157,10 +171,6 @@
       <div class="stat-card" onclick="openAllUsersModal()">
         <div class="stat-icon purple">👥</div>
         <div><div class="stat-num" id="stat-users">—</div><div class="stat-label">Total Users</div></div>
-      </div>
-      <div class="stat-card" onclick="openAdminsModal()">
-        <div class="stat-icon yellow">🔑</div>
-        <div><div class="stat-num" id="stat-admins">—</div><div class="stat-label">Admins</div></div>
       </div>
       <div class="stat-card" onclick="openAllImagesPanel()">
         <div class="stat-icon green">📷</div>
@@ -481,9 +491,8 @@ async function refreshDashboard(){
   document.getElementById('empty-state').classList.remove('visible');
   document.getElementById('table-count').textContent='Loading…';
   try{
-    const [users, admins] = await Promise.all([api('GET','/api/users'), api('GET','/api/admins')]);
+    const users = await api('GET','/api/users');
     _allUsers = users;
-    document.getElementById('stat-admins').textContent = admins.length;
     renderTable(document.getElementById('search-input').value);
   } catch(e){ if(e.message!=='Unauthorized') toast('Cannot reach server — is it running?','error'); }
 }
@@ -529,6 +538,7 @@ function renderTable(search=''){
         <button class="btn-view"  onclick="event.stopPropagation();openImagePanel('${escAttr(uid)}')">👁 Cards</button>
         <button class="btn-dl"    onclick="event.stopPropagation();downloadUserData('${escAttr(uid)}')">↓ ZIP</button>
         <button class="btn-edit"  onclick="event.stopPropagation();openEditUser('${escAttr(uid)}')">✏ Edit</button>
+        <button class="btn-view"  onclick="event.stopPropagation();openJsonView('${escAttr(uid)}')">{ } Data</button>
         <div class="dots-wrap" onclick="event.stopPropagation()">
           <button class="btn-dots" onclick="toggleRowMenu(this,'${escAttr(uid)}')" title="More options">⋮</button>
           <div class="row-dropdown" id="menu-${escAttr(uid)}">
@@ -950,6 +960,30 @@ document.addEventListener('click', () => {
   });
   document.querySelectorAll('.btn-dots.active').forEach(b => b.classList.remove('active'));
 });
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  VIEW — RAW JSON DATA (on-dashboard)
+// ═════════════════════════════════════════════════════════════════════════════
+let _jsonViewCache = null;
+async function openJsonView(userId){
+  document.getElementById('modal-json-title').textContent = `{ } ${userId} — Data`;
+  document.getElementById('modal-json-body').textContent = 'Loading…';
+  openModal('modal-json-view');
+  try{
+    const cards = await api('GET', `/api/users/${encodeURIComponent(userId)}/cards`);
+    _jsonViewCache = cards;
+    document.getElementById('modal-json-body').textContent = JSON.stringify(cards, null, 2);
+  } catch(e){
+    document.getElementById('modal-json-body').textContent = 'Failed to load data.';
+    if(e.message !== 'Unauthorized') toast('Could not load JSON data', 'error');
+  }
+}
+function copyJsonView(){
+  if(!_jsonViewCache) return;
+  navigator.clipboard.writeText(JSON.stringify(_jsonViewCache, null, 2))
+    .then(()=>toast('JSON copied to clipboard'))
+    .catch(()=>toast('Copy failed', 'error'));
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  EXPORT — CARDS JSON
