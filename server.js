@@ -693,6 +693,12 @@ app.post('/upload', uploadLimiter, upload.single('file'), async (req, res) => {
 // =============================================================================
 app.get('/api/users', requireAdmin, async (req, res) => {
   try {
+  
+   res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
     const users = await UserModel.find().lean();
     const filesColl = mongoose.connection.db.collection('uploads.files');
 
